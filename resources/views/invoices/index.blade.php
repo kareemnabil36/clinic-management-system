@@ -4,7 +4,9 @@
 
 <h2 class="mb-3 text-info">الفواتير</h2>
 
+@if(auth()->user()->role === 'admin')
 <a href="{{ route('invoices.create') }}" class="btn btn-info text-white mb-3">إنشاء فاتورة جديدة</a>
+@endif
 
 <table class="table table-bordered">
     <thead class="table-info">
@@ -15,7 +17,9 @@
             <th>المبلغ</th>
             <th>حالة الدفع</th>
             <th>تاريخ الفاتورة</th>
-            <th>الإجراءات</th>
+            @if(auth()->user()->role === 'admin')
+                <th>Actions</th>
+            @endif
         </tr>
     </thead>
     <tbody>
@@ -35,14 +39,16 @@
                 @endif
             </td>
             <td>{{ $invoice->invoice_date }}</td>
+            @if(auth()->user()->role === 'admin')
             <td>
-                <a href="{{ route('invoices.edit', $invoice->id) }}" class="btn btn-sm btn-info">Edit</a>
+                <a href="{{ route('invoices.edit', $invoice->id) }}" class="btn btn-sm btn-outline-info">Edit</a>
                 <form action="{{ route('invoices.destroy', $invoice->id) }}" method="POST" style="display:inline;">
                     @csrf
                     @method('DELETE')
                     <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('متأكد إنك عايز تحذف الفاتورة دي؟')">Delete</button>
                 </form>
             </td>
+            @endif
         </tr>
         @endforeach
     </tbody>

@@ -6,15 +6,55 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\InvoiceController;
-
-use Illuminate\Support\Facades\Route;
+use Illuminate\Foundation\Application;
+use Illuminate\Support\Facades\Route;   
+use App\Models\Doctor;
+use App\Models\Patient;
+use App\Models\Appointment;
+use App\Models\Invoice;
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 });
 
 Route::get('/dashboard', function () {
-    return view('dashboard');
+    $user = auth()->user();
+
+    if ($user->role === 'admin') {
+        $totalDoctors = Doctor::count();
+        $totalPatients = Patient::count();
+        $todayAppointments = Appointment::whereDate('appointment_date', today())->count();
+        $unpaidInvoices = Invoice::where('payment_status', 'unpaid')->count();
+        $totalAppointments = Appointment::count();
+
+        return view('dashboard', compact('totalDoctors', 'totalPatients', 'todayAppointments', 'unpaidInvoices', 'totalAppointments'));
+
+    } elseif ($user->role === 'doctor') {
+
+        if (!$user->doctor) {
+            return redirect()->route('login')->withErrors(['email' => 'حسابك غير مربوط ببيانات دكتور. برجاء التواصل مع الإدارة.']);
+        }
+
+        $myAppointmentsToday = Appointment::where('doctor_id', $user->doctor->id)
+            ->whereDate('appointment_date', today())
+            ->count();
+        $myTotalAppointments = Appointment::where('doctor_id', $user->doctor->id)->count();
+
+        return view('dashboard-doctor', compact('myAppointmentsToday', 'myTotalAppointments'));
+
+    } else { // patient
+
+        if (!$user->patient) {
+            return redirect()->route('login')->withErrors(['email' => 'حسابك غير مربوط ببيانات مريض. برجاء التواصل مع الإدارة.']);
+        }
+
+        $myAppointments = Appointment::where('patient_id', $user->patient->id)->count();
+        $myUpcoming = Appointment::where('patient_id', $user->patient->id)
+            ->where('appointment_date', '>=', today())
+            ->count();
+
+        return view('dashboard-patient', compact('myAppointments', 'myUpcoming'));
+    }
 })->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
@@ -29,6 +69,12 @@ Route::middleware('auth')->group(function () {
     Route::get('/doctors/{doctor}/edit', [DoctorController::class, 'edit'])->name('doctors.edit');
     Route::put('/doctors/{doctor}', [DoctorController::class, 'update'])->name('doctors.update');
     Route::delete('/doctors/{doctor}', [DoctorController::class, 'destroy'])->name('doctors.destroy');
+
+    // Doctor Accounts
+    Route::middleware(['auth', 'admin'])->group(function () {
+    Route::get('/doctors/create-account', [DoctorController::class, 'createAccount'])->name('doctors.create-account');
+    Route::post('/doctors/create-account', [DoctorController::class, 'storeAccount'])->name('doctors.store-account');
+});
 
     // Patients
     Route::get('/patients', [PatientController::class, 'index'])->name('patients.index');

@@ -40,7 +40,14 @@ class RegisteredUserController extends Controller
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'role' => $request->input('role', 'patient'), // Default role is 'patient'
         ]);
+        
+        \App\Models\Patient::create([
+        'user_id' => $user->id,
+        'name' => $user->name,
+        'email' => $user->email,
+    ]);
 
         event(new Registered($user));
 

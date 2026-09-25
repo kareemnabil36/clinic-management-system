@@ -10,14 +10,28 @@ class InvoiceController extends Controller
 {
     public function index()
     {
-        $invoices = Invoice::with(['appointment.doctor', 'patient'])->latest()->get();
+        $user = auth()->user();
+
+        if ($user->role === 'admin') {
+            $invoices = Invoice::with(['appointment.doctor', 'patient'])->latest()->get();
+        } elseif ($user->role === 'patient') {
+            $invoices = Invoice::with(['appointment.doctor', 'patient'])
+                ->where('patient_id', $user->patient->id)
+                ->latest()->get();
+        } else {
+            // الدكتور مالوش دعوة بالفواتير
+            abort(403, 'غير مصرح لك بالوصول لهذه الصفحة.');
+        }
 
         return view('invoices.index', compact('invoices'));
     }
 
     public function create()
     {
-        // بنجيب بس المواعيد اللي مفيهاش فاتورة متسجلة لها بالفعل
+        if (auth()->user()->role !== 'admin') {
+            abort(403);
+        }
+
         $appointments = Appointment::whereDoesntHave('invoice')
             ->where('status', 'completed')
             ->get();
@@ -27,6 +41,10 @@ class InvoiceController extends Controller
 
     public function store(Request $request)
     {
+        if (auth()->user()->role !== 'admin') {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'appointment_id' => 'required|exists:appointments,id',
             'amount' => 'required|numeric|min:0',
@@ -36,7 +54,6 @@ class InvoiceController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        // بنجيب الـ patient_id تلقائيًا من الموعد نفسه
         $appointment = Appointment::findOrFail($validated['appointment_id']);
         $validated['patient_id'] = $appointment->patient_id;
 
@@ -47,11 +64,19 @@ class InvoiceController extends Controller
 
     public function edit(Invoice $invoice)
     {
+        if (auth()->user()->role !== 'admin') {
+            abort(403);
+        }
+
         return view('invoices.edit', compact('invoice'));
     }
 
     public function update(Request $request, Invoice $invoice)
     {
+        if (auth()->user()->role !== 'admin') {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0',
             'payment_status' => 'required|in:unpaid,paid,partial',
@@ -66,6 +91,10 @@ class InvoiceController extends Controller
 
     public function destroy(Invoice $invoice)
     {
+        if (auth()->user()->role !== 'admin') {
+            abort(403);
+        }
+
         $invoice->delete();
 
         return redirect()->route('invoices.index')->with('success', 'تم حذف الفاتورة بنجاح');

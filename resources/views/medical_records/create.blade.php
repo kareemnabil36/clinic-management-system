@@ -2,7 +2,7 @@
 
 @section('content')
 
-<h2 class="mb-3">تسجيل سجل طبي جديد</h2>
+<h2 class="mb-3 text-warning">تسجيل سجل طبي جديد</h2>
 
 @if ($errors->any())
     <div class="alert alert-danger">
@@ -20,13 +20,14 @@
     <div class="mb-3">
         <label for="patient_id" class="form-label">المريض</label>
         <select name="patient_id" id="patient_id" class="form-control" required>
-            <option value="">-- اختر المريض --</option>
-            @foreach($patients as $patient)
-                <option value="{{ $patient->id }}">{{ $patient->name }}</option>
-            @endforeach
-        </select>
+    <option value="">-- اختر المريض --</option>
+    @foreach($patients as $patient)
+        <option value="{{ $patient->id }}">{{ $patient->name }}</option>
+    @endforeach
+</select>
     </div>
 
+    @if(auth()->user()->role === 'admin')
     <div class="mb-3">
         <label for="doctor_id" class="form-label">الدكتور</label>
         <select name="doctor_id" id="doctor_id" class="form-control" required>
@@ -36,6 +37,7 @@
             @endforeach
         </select>
     </div>
+    @endif
 
     <div class="mb-3">
         <label for="appointment_id" class="form-label">الموعد المرتبط (اختياري)</label>
@@ -43,7 +45,7 @@
             <option value="">-- بدون ربط بموعد --</option>
             @foreach($appointments as $appointment)
                 <option value="{{ $appointment->id }}">
-                    {{ $appointment->serial_number }} - {{ $appointment->doctor->name }} / {{ $appointment->patient->name }} ({{ $appointment->appointment_date }})
+                    {{ $appointment->serial_number }} - {{ $appointment->patient->name }} ({{ $appointment->appointment_date }})
                 </option>
             @endforeach
         </select>

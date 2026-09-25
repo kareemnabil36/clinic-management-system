@@ -71,3 +71,10 @@
                     <a href="{{ route('password.request') }}" class="text-muted small">نسيت كلمة المرور؟</a>
                 </div>
             @endif
+
+            @if (Route::has('register'))
+    <div class="text-center mt-2">
+        <span class="small text-muted">مفيش حساب؟</span>
+        <a href="{{ route('register') }}" class="small">سجّل دلوقتي</a>
+    </div>
+@endif

@@ -11,13 +11,24 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
         <div class="container">
+            @if(auth()->user()->role === 'admin')
             <a class="navbar-brand" href="{{ route('doctors.index') }}">نظام حجز المواعيد</a>
+            @endif
+            
+            
             <div class="navbar-nav me-auto">
+                <a class="nav-link text-light fw-bold" href="{{ route('dashboard') }}">لوحة التحكم</a>
+                                @if(auth()->user()->role === 'admin')
+
                 <a class="nav-link text-success fw-bold" href="{{ route('doctors.index') }}">الدكاترة</a>
                 <a class="nav-link text-danger fw-bold" href="{{ route('patients.index') }}">المرضى</a>
+                @endif
                 <a class="nav-link text-primary fw-bold" href="{{ route('appointments.index') }}">المواعيد</a>
                 <a class="nav-link text-warning fw-bold" href="{{ route('medical-records.index') }}">السجلات الطبية</a>
+
+                @if(auth()->user()->role !== 'doctor')
                 <a class="nav-link text-info fw-bold" href="{{ route('invoices.index') }}">الفواتير</a>
+                @endif
             </div>
 
             @auth

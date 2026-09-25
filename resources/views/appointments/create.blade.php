@@ -2,6 +2,7 @@
 
 @section('content')
 
+<h2 class="mb-3 text-primary">حجز موعد جديد</h2>
 
 @if ($errors->any())
     <div class="alert alert-danger">
@@ -13,10 +14,9 @@
     </div>
 @endif
 
-<h2 class="mb-3 text-primary">حجز موعد جديد</h2>
-
 <form action="{{ route('appointments.store') }}" method="POST">
     @csrf
+
     <div class="mb-3">
         <label for="doctor_id" class="form-label">Doctor</label>
         <select name="doctor_id" id="doctor_id" class="form-control" required>
@@ -27,6 +27,7 @@
         </select>
     </div>
 
+    @if($user->role !== 'patient')
     <div class="mb-3">
         <label for="patient_id" class="form-label">Patient</label>
         <select name="patient_id" id="patient_id" class="form-control" required>
@@ -36,6 +37,7 @@
             @endforeach
         </select>
     </div>
+    @endif
 
     <div class="mb-3">
         <label for="appointment_date" class="form-label">Date</label>

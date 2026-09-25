@@ -12,22 +12,57 @@ class MedicalRecordController extends Controller
 {
     public function index()
     {
-        $medicalRecords = MedicalRecord::with(['doctor', 'patient'])->latest()->get();
+        $user = auth()->user();
+
+        if ($user->role === 'admin') {
+            $medicalRecords = MedicalRecord::with(['doctor', 'patient'])->latest()->get();
+        } elseif ($user->role === 'doctor') {
+            $medicalRecords = MedicalRecord::with(['doctor', 'patient'])
+                ->where('doctor_id', $user->doctor->id)
+                ->latest()->get();
+        } else { // patient
+            $medicalRecords = MedicalRecord::with(['doctor', 'patient'])
+                ->where('patient_id', $user->patient->id)
+                ->latest()->get();
+        }
 
         return view('medical_records.index', compact('medicalRecords'));
     }
 
-    public function create()
-    {
-        $doctors = Doctor::all();
-        $patients = Patient::all();
-        $appointments = Appointment::where('status', 'completed')->get();
+  public function create()
+{
+    $user = auth()->user();
 
-        return view('medical_records.create', compact('doctors', 'patients', 'appointments'));
+    if ($user->role === 'patient') {
+        abort(403, 'غير مصرح لك بإضافة سجل طبي.');
     }
 
+    if ($user->role === 'doctor') {
+        // الدكتور يشوف بس المرضى اللي حجزوا معاه
+        $patients = \App\Models\Patient::whereHas('appointments', function ($query) use ($user) {
+            $query->where('doctor_id', $user->doctor->id);
+        })->get();
+
+        $appointments = Appointment::where('doctor_id', $user->doctor->id)
+            ->where('status', 'completed')
+            ->get();
+
+        return view('medical_records.create', compact('patients', 'appointments'));
+    }
+
+    // Admin
+    $doctors = Doctor::all();
+    $patients = Patient::all();
+    $appointments = Appointment::where('status', 'completed')->get();
+
+    return view('medical_records.create', compact('doctors', 'patients', 'appointments'));
+}
     public function store(Request $request)
     {
+        if (auth()->user()->role === 'patient') {
+            abort(403, 'غير مصرح لك بإضافة سجل طبي.');
+        }
+
         $validated = $request->validate([
             'doctor_id' => 'required|exists:doctors,id',
             'patient_id' => 'required|exists:patients,id',
@@ -46,6 +81,16 @@ class MedicalRecordController extends Controller
 
     public function show(MedicalRecord $medicalRecord)
     {
+        $user = auth()->user();
+
+        // التأكد إن المريض بيشوف بس سجله، والدكتور بيشوف بس سجل مريضه
+        if ($user->role === 'patient' && $medicalRecord->patient_id !== $user->patient->id) {
+            abort(403);
+        }
+        if ($user->role === 'doctor' && $medicalRecord->doctor_id !== $user->doctor->id) {
+            abort(403);
+        }
+
         $medicalRecord->load(['doctor', 'patient', 'appointment']);
 
         return view('medical_records.show', compact('medicalRecord'));

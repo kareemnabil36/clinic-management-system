@@ -4,7 +4,9 @@
 
 <h2 class="mb-3 text-warning">السجلات الطبية</h2>
 
+@if(auth()->user()->role !== 'patient')
 <a href="{{ route('medical-records.create') }}" class="btn btn-warning mb-3">إضافة سجل طبي جديد</a>
+@endif
 
 <table class="table table-bordered">
     <thead class="table-dark">
@@ -13,7 +15,7 @@
             <th>الدكتور</th>
             <th>التشخيص</th>
             <th>تاريخ السجل</th>
-            <th>الإجراءات</th>
+            <th>Actions</th>
         </tr>
     </thead>
     <tbody>

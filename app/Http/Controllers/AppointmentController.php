@@ -11,31 +11,69 @@ class AppointmentController extends Controller
     
  public function index()
     {
-        $appointments = Appointment::with(['doctor', 'patient'])->get();
+       $user = auth()->user();
 
-        return view('appointments.index', compact('appointments'));
+    if ($user->role === 'admin') {
+        $appointments = Appointment::with(['doctor', 'patient'])->latest()->get();
+    } elseif ($user->role === 'doctor') {
+        $appointments = Appointment::with(['doctor', 'patient'])
+            ->where('doctor_id', $user->doctor->id)
+            ->latest()
+            ->get();
+    } else { // patient
+        $appointments = Appointment::with(['doctor', 'patient'])
+            ->where('patient_id', $user->patient->id)
+            ->latest()
+            ->get();
+    }
+
+    return view('appointments.index', compact('appointments'));
     }
 
     public function create()
-    {
-        $doctors = Doctor::all();
-        $patients = Patient::all();
-
-        return view('appointments.create', compact('doctors', 'patients'));
+{
+    if (auth()->user()->role === 'doctor') {
+        abort(403, 'غير مصرح لك بحجز المواعيد.');
     }
 
+
+    $user = auth()->user();
+    $doctors = Doctor::all();
+    $patients = Patient::all();
+    
+
+    return view('appointments.create', compact('doctors', 'patients', 'user'));
+}
+
    
-    public function store(Request $request)
+   public function store(Request $request)
 {
-    $validated = $request->validate([
+    if (auth()->user()->role === 'doctor') {
+        abort(403, 'غير مصرح لك بحجز المواعيد.');
+    }
+
+    $user = auth()->user();
+
+    $rules = [
         'doctor_id' => 'required|exists:doctors,id',
-        'patient_id' => 'required|exists:patients,id',
         'appointment_date' => 'required|date|after_or_equal:today',
         'appointment_time' => 'required',
         'notes' => 'nullable|string|max:500',
-    ]);
+    ];
 
-    // التحقق من عدم وجود تعارض في المواعيد لنفس الدكتور
+    // لو المستخدم مش Patient، لازم يختار المريض من الفورم
+    if ($user->role !== 'patient') {
+        $rules['patient_id'] = 'required|exists:patients,id';
+    }
+
+    $validated = $request->validate($rules);
+
+    // لو المستخدم Patient، نحدد الـ patient_id تلقائيًا من حسابه
+    if ($user->role === 'patient') {
+        $validated['patient_id'] = $user->patient->id;
+    }
+
+    // التحقق من عدم وجود تعارض في المواعيد
     $conflict = Appointment::where('doctor_id', $validated['doctor_id'])
         ->where('appointment_date', $validated['appointment_date'])
         ->where('appointment_time', $validated['appointment_time'])
@@ -46,20 +84,12 @@ class AppointmentController extends Controller
         return back()->withErrors(['appointment_time' => 'هذا الدكتور لديه موعد آخر في نفس التاريخ والوقت.'])->withInput();
     }
 
-    // توليد رقم الكشف تلقائيًا
     $year = date('Y');
-
     $lastAppointment = Appointment::where('serial_number', 'like', "APT-{$year}-%")
         ->orderBy('id', 'desc')
         ->first();
 
-    if ($lastAppointment) {
-        $lastNumber = (int) substr($lastAppointment->serial_number, -4);
-        $newNumber = $lastNumber + 1;
-    } else {
-        $newNumber = 1;
-    }
-
+    $newNumber = $lastAppointment ? ((int) substr($lastAppointment->serial_number, -4)) + 1 : 1;
     $validated['serial_number'] = 'APT-' . $year . '-' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
 
     Appointment::create($validated);
